@@ -26,12 +26,12 @@ class Store<T extends object = any> {
 	}
 
 	set(path: Path, value: any): void {
-		this.update((data) => safeSet(data, path, value))
+		this.update((data) => safeSet(data, path, value));
 	}
 
 	unset(...pathes: Path[]): void {
 		this.update((data) => 
-			pathes.reduce((newData, path) => unset(path, newData), data))
+			pathes.reduce((newData, path) => unset(path, newData), data));
 	}
 
 	transform(path: Path, transformer: (data: any) => any): void {
@@ -39,7 +39,7 @@ class Store<T extends object = any> {
 			const oldValue = safeGet(data, path);
 			const newValue = transformer(oldValue);
 			return safeSet(data, path, newValue);
-		})
+		});
 	}
 
 	extend(path: Path, partial: object): void {
