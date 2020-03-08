@@ -29,8 +29,9 @@ class Store<T extends object = any> {
 		this.update((data) => safeSet(data, path, value))
 	}
 
-	unset(path: Path): void {
-		this.update((data) => unset(path, data))
+	unset(...pathes: Path[]): void {
+		this.update((data) => 
+			pathes.reduce((newData, path) => unset(path, newData), data))
 	}
 
 	transform(path: Path, transformer: (data: any) => any): void {
@@ -92,22 +93,29 @@ const initialData = {
 const myStore = new Store<ITest>(initialData);
 const log = (msg) => (value) => console.log(msg, value);
 
-myStore.get().subscribe(log('store: ')); // logs store: initialData
-myStore.get(['b', 'd']).subscribe(log('b -> d: ')); // logs b -> d; undefined
-myStore.get(['e']).subscribe(log('e: ')); // logs e: { f: "world" }
-
+myStore.get().subscribe(log('store: '));
+myStore.get(['b', 'd']).subscribe(log('b -> d: '));
+myStore.get(['e']).subscribe(log('e: '));
+// logs 
+// store:  { e: { f: 'world' } }
+// b -> d:  undefined
+// e:  { f: 'world' }
 
 myStore.set(['b', 'c'], false);
 // logs:
-// store: {...initialData, { b: { c: false }}}
+// store:  { e: { f: 'world' }, b: { c: false } }
 
 myStore.set(['b', 'd'], "hello");
-// // logs:
-// // store: {...initialData, { b: { c: false, d: "hello" }}}
-// // b -> d: "hello"
+// logs:
+// store:  { e: { f: 'world' }, b: { c: false, d: 'hello' } }
+// b -> d:  hello
 
 myStore.extend(['b'], { d: 'cool', f: 'store' });
-// // logs:
-// store: {...initialData, { b: { c: false, d: "cool", f: "store" }}}
-// b -> d: "cool"
-// console.log(safeSet(initialData, ['b', 'c'], "hello world"))
+// logs:
+// store:  { e: { f: 'world' }, b: { c: false, d: 'cool', f: 'store' } }
+// b -> d:  cool
+
+myStore.unset(['b', 'c'], ['e', 'f']);
+// logs:
+// store:  { e: {}, b: { d: 'cool', f: 'store' } }
+// e:  {}

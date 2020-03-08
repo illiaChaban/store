@@ -1,60 +1,45 @@
 "use strict";
-var __assign = (this && this.__assign) || function () {
-    __assign = Object.assign || function(t) {
-        for (var s, i = 1, n = arguments.length; i < n; i++) {
-            s = arguments[i];
-            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
-                t[p] = s[p];
-        }
-        return t;
-    };
-    return __assign.apply(this, arguments);
-};
 Object.defineProperty(exports, "__esModule", { value: true });
-var rxjs_1 = require("rxjs");
-var operators_1 = require("rxjs/operators");
-var fp_1 = require("lodash/fp");
-var Store = /** @class */ (function () {
-    function Store(initialData) {
-        if (initialData === void 0) { initialData = {}; }
+const rxjs_1 = require("rxjs");
+const operators_1 = require("rxjs/operators");
+const fp_1 = require("lodash/fp");
+class Store {
+    constructor(initialData = {}) {
         this.data$ = new rxjs_1.BehaviorSubject(initialData);
     }
-    Store.prototype.get = function (path) {
-        if (path === void 0) { path = []; }
-        return this.data$.pipe(operators_1.map(function (data) { return safeGet(data, path); }), operators_1.distinctUntilChanged());
-    };
-    Store.prototype.set = function (path, value) {
-        this.update(function (data) { return safeSet(data, path, value); });
-    };
-    Store.prototype.unset = function (path) {
-        this.update(function (data) { return fp_1.unset(path, data); });
-    };
-    Store.prototype.transform = function (path, transformer) {
-        this.update(function (data) {
-            var oldValue = safeGet(data, path);
-            var newValue = transformer(oldValue);
+    get(path = []) {
+        return this.data$.pipe(operators_1.map((data) => safeGet(data, path)), operators_1.distinctUntilChanged());
+    }
+    set(path, value) {
+        this.update((data) => safeSet(data, path, value));
+    }
+    unset(...pathes) {
+        this.update((data) => pathes.reduce((newData, path) => fp_1.unset(path, newData), data));
+    }
+    transform(path, transformer) {
+        this.update((data) => {
+            const oldValue = safeGet(data, path);
+            const newValue = transformer(oldValue);
             return safeSet(data, path, newValue);
         });
-    };
-    Store.prototype.extend = function (path, partial) {
-        this.transform(path, function (data) { return (__assign(__assign({}, data), partial)); });
-    };
-    Store.prototype.batchSet = function (batch) {
-        this.update(function (data) {
-            return batch.reduce(function (data, _a) {
-                var path = _a.path, value = _a.value;
+    }
+    extend(path, partial) {
+        this.transform(path, (data) => ({ ...data, ...partial }));
+    }
+    batchSet(batch) {
+        this.update((data) => {
+            return batch.reduce((data, { path, value }) => {
                 return safeSet(data, path, value);
             }, data);
         });
-    };
-    Store.prototype.update = function (updater) {
-        var oldData = this.data$.value;
-        var newData = updater(oldData);
+    }
+    update(updater) {
+        const oldData = this.data$.value;
+        const newData = updater(oldData);
         if (newData !== oldData)
             this.data$.next(newData);
-    };
-    return Store;
-}());
+    }
+}
 function safeGet(obj, path) {
     return path.length ? fp_1.get(path, obj) : obj;
 }
@@ -62,25 +47,32 @@ function safeSet(obj, path, value) {
     return path.length ? fp_1.setWith(Object, path, value, obj) : value;
 }
 ;
-var initialData = {
+const initialData = {
     e: {
         f: "world"
     }
 };
-var myStore = new Store(initialData);
-var log = function (msg) { return function (value) { return console.log(msg, value); }; };
-myStore.get().subscribe(log('store: ')); // logs store: initialData
-myStore.get(['b', 'd']).subscribe(log('b -> d: ')); // logs b -> d; undefined
-myStore.get(['e']).subscribe(log('e: ')); // logs e: { f: "world" }
+const myStore = new Store(initialData);
+const log = (msg) => (value) => console.log(msg, value);
+myStore.get().subscribe(log('store: '));
+myStore.get(['b', 'd']).subscribe(log('b -> d: '));
+myStore.get(['e']).subscribe(log('e: '));
+// logs 
+// store:  { e: { f: 'world' } }
+// b -> d:  undefined
+// e:  { f: 'world' }
 myStore.set(['b', 'c'], false);
 // logs:
-// store: {...initialData, { b: { c: false }}}
+// store:  { e: { f: 'world' }, b: { c: false } }
 myStore.set(['b', 'd'], "hello");
-// // logs:
-// // store: {...initialData, { b: { c: false, d: "hello" }}}
-// // b -> d: "hello"
+// logs:
+// store:  { e: { f: 'world' }, b: { c: false, d: 'hello' } }
+// b -> d:  hello
 myStore.extend(['b'], { d: 'cool', f: 'store' });
-// // logs:
-// store: {...initialData, { b: { c: false, d: "cool", f: "store" }}}
-// b -> d: "cool"
-// console.log(safeSet(initialData, ['b', 'c'], "hello world"))
+// logs:
+// store:  { e: { f: 'world' }, b: { c: false, d: 'cool', f: 'store' } }
+// b -> d:  cool
+myStore.unset(['b', 'c'], ['e', 'f']);
+// logs:
+// store:  { e: {}, b: { d: 'cool', f: 'store' } }
+// e:  {}
