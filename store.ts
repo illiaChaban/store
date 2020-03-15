@@ -42,8 +42,8 @@ class Store<T extends object = any> {
 		});
 	}
 
-	extend(path: Path, partial: object): void {
-		this.transform(path, (data) => ({...data, ...partial}));
+	extend<T>(path: Path, partial: Partial<T>): void {
+		this.transform(path, (data: T) => ({...data, ...partial}));
 	}
 
 	batchSet(batch: IBatchSet[]): void {
@@ -54,10 +54,10 @@ class Store<T extends object = any> {
 		});
 	}
 
-	private update( updater: (oldData: T) => T ): void {
+	private update( transformer: (oldData: T) => T ): void {
 		const oldData = this.data$.value;
-		const newData = updater(oldData);
-		if (newData !== oldData) this.data$.next(newData);
+		const newData = transformer(oldData);
+		this.data$.next(newData);
 	}
 }
 
